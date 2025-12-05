@@ -1,0 +1,138 @@
+\documentclass{article}
+
+% latex packages, feel free to add more here like 'tikz'
+\usepackage{style/conference}
+\usepackage{opensans}
+\usepackage{graphicx}
+\usepackage{biblatex}
+\usepackage{fontawesome}
+\usepackage[hidelinks]{hyperref}
+
+% to reference, paste the BibTeX obtained from google scholar into references.bib
+\addbibresource{references.bib}
+\input{style/math_commands.tex}
+
+% replace this title with your own title if you like
+\title{Efficient Efficient Discriminative and Generative Modelling}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+    This paper proposes using CNNs for image classification and a diffusion model for image generation. In the classification model, the network architecture is carefully designed, incorporating various data augmentation strategies, regularization techniques, and dynamic training approaches. This classification model achieves an accuracy of 80.56\% on the AddNIST dataset with around 65,000 parameters, demonstrating its efficiency and capability. For generative modeling, the paper proposes an implementation of a diffusion model. A simple U-Net is carefully designed, following the algorithm to learn the noise patterns in the CIFAR-100 dataset. It generates clear images and textures with limited training epochs and parameters, and the FID score further highlights its performance.
+\end{abstract}
+
+% this is where the classifier methodology begins
+\section*{{\textbf{Part 1: Classification}}}
+
+\section{Methodology}
+\subsection{Convolutional Layers}
+\begin{itemize}
+    \item \textbf{Convolutional Layer 1:} The $28\times 28$ size input image is processed, and 16 channels feature are output. The kernel size is 3x3, with padding set to 1 to keep the image size unchanged.
+    
+    \item \textbf{Convolutional Layer 2:} This layer receives the 16 channel feature from the first layer and outputs 32 channels feature. The kernel size and padding are the same as in the first layer.
+
+    \item \textbf{Convolutional Layer 3:} The second layer's output (32 channels feature) is passed into this layer, which outputs 48 channels feature.
+
+    \item \textbf{Convolutional Layer 4:} This layer receives the 48 channels feature from the third layer and outputs 64 channels feature.
+
+    In each convolutional block, Batch normalization (BatchNorm) is applied after the convolution to reduce internal covariate shift and improve training stability. And a ReLU activation function is applied next to introduce non-linearity. Moreover, a \textit{Max Pooling} operation with a 2x2 kernel size is used to reduce the spatial dimensions (height and width) and extract the most important features from the image.
+\end{itemize}
+
+\subsection{Fully Connected Layers}
+\begin{itemize}
+    \item \textbf{First Fully Connected Layer:} After the convolutional layers, the output features is flattened using \texttt{x.view(x.size(0), -1)} to convert the 4D features into a 1D features. The fully connected layer compresses the input from 64-channel features to 128-channel features, which is followed by a ReLU activation function.
+    
+    \item \textbf{Second Fully Connected Layer:} This layer changes the output from 128 channels to 64 channels, and also applies the ReLU activation function again.
+
+    \item \textbf{Output Layer:} The final output layer maps the 64 channels to 20 channels, corresponding to the 20 predicted classes.
+\end{itemize}
+
+\subsection{Dropout Layer}
+Two Dropout layers are applied between the fully connected layers. The Dropout layers can prevent the model from overfitting by randomly dropping a certain percentage of neurons during training, reducing the network's reliance on specific neurons, and it is a practical regularization technique.
+
+\subsection{Activation Functions and Regularization}
+\begin{itemize}
+    \item \textbf{ReLU Activation Function:} The Rectified Linear Unit (ReLU) is a widely used activation function that introduces non-linearity. ReLU is applied after each convolutional and fully connected layer.
+    
+    \item \textbf{Batch Normalization:} Batch normalization is applied after each convolutional layer to accelerate the training process and stabilize the gradients. It normalizes the input for each mini-batch, reducing internal covariate shift.
+\end{itemize}
+
+\subsection{Overall Architecture Design}
+This network architecture is simple yet effective, utilizing multiple convolutional and fully connected layers to progressively extract features from the image and reduce spatial dimensions. By incorporating batch normalization and dropout layers, the network achieves improved training stability and effectively prevents overfitting.
+
+
+\section{Results}
+The network has 64,868 parameters.
+
+% replace this with your own data
+It attains 71.38\% training accuracy and also 80.56\% testing accuracy at 127 optimisation steps, which is not very good (train loss: 0.9442, train acc: 71.38, test acc: 80.56\%).
+
+Here is the training graph:
+
+% upload your graph to the figures directory
+\begin{center}
+    \includegraphics[width=1\textwidth]{figures/output.png}
+\end{center}
+
+\section{Limitations}
+The proposed network achieves an 80\% classification accuracy on the AddNIST, which is decent but still has some limitations. The network is relatively shallow. Compared to deeper networks like ResNet, it has limited capability to capture complex patterns and extract high-level features. This network is primarily designed for small-sized images and may require significant modifications to handle higher-resolution images or more complex datasets effectively.
+
+% this is where the generative model methodology begins
+\section*{{\textbf{Part 2: Generative model}}}
+
+\section{Methodology}
+\subsection{Generative Adversarial Network(GAN)}
+In this task, GAN is selected to learn the data distribution of CIFAR-100, and generates similar images.
+
+
+Generative Adversarial Networks (GANs), first proposed by Ian Goodfellow, represent an innovative architecture in the field of deep learning. The fundamental concept of GANs is to utilize two neural networks, namely the Generator and the Discriminator, which compete against each other to learn the underlying data distribution.
+
+\textbf{The Generator} is tasked with learning to produce data that closely resembles the real data from a random noise input. Its objective is to generate synthetic samples that are indistinguishable from the real data by the discriminator.
+
+\textbf{The Discriminator} aims to distinguish between real data and the data generated by the generator. It acts as a binary classifier that outputs the probability of a given input belonging to the real data distribution.
+
+\subsection{Loss Function}
+(1)The objective of the generator is to maximize the probability of the discriminator misclassifying the samples it generates. The loss function is typically expressed as follows:
+$$\mathcal{L}_G = \mathbb{E}_{z \sim p_z(z)} \left[ \log \left( 1 - D(G(z)) \right) \right]
+$$
+
+where $G(z)$ represents the sample generated by the generator from random noise $z$, and $D(x)$ denotes the discriminator's estimated probability that a sample $x$ belongs to the real data distribution.
+
+(2)The objective of the discriminator is to correctly distinguish between real data and generated data. The loss function is typically expressed as:
+$$\mathcal{L}_D = - \mathbb{E}_{x \sim p_{\text{data}}(x)} \left[ \log D(x) \right] 
+                - \mathbb{E}_{z \sim p_z(z)} \left[ \log \left( 1 - D(G(z)) \right) \right]
+$$
+where $D(x)$ represents the discriminator's estimated probability that a sample $x$ is real, $G(z)$ denotes the sample generated by the generator from random noise $z$, and $p_{data}(x)$ and $p_z(z)$ represent the distributions of real data and noise, respectively.
+
+\subsection{Network Design}
+The generator transforms random noise $z\in R^{nz}$ into images through a fully connected layer followed by reshaping and three transposed convolutional layers. These layers progressively upsample the feature maps, applying batch normalization and ReLU activation, with the final layer using Tanh activation to normalize pixel values to [-1,1].
+
+The discriminator acts as a binary classifier to distinguish real from generated images. It consists of three convolutional layers that extract features and reduce spatial dimensions, using LeakyReLU activation and batch normalization for stability. The features are flattened and passed to a fully connected layer with a Sigmoid activation to output a probability.
+
+Weight initialization is performed using a normal distribution (mean 0, std 0.02) for convolutional layers, with batch normalization weights set to 1 and biases to 0. This setup ensures stable and effective adversarial training.
+
+\subsection{Loss}
+The loss curves during training are as follows:
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{figures/loss.png}
+
+\end{center}
+\section{Results}
+
+The network has 864,132 parameters and achieves an FID of 65.97 against the CIFAR-100 test dataset. It was trained for 50 optimisation steps (25 for generator and 25 for discriminator).
+
+In the results, we observe some recognizable shapes and colors; however, the overall quality of the generated images is suboptimal. The following left figure shows a random batch of non-cherry-picked samples.
+
+The figure on the right illustrates the images generated from eight pairs of interpolated noise. It can be observed that as the interpolation becomes more uniform, the generated images degrade into completely blurry noise. However, adjacent images appear highly similar, demonstrating the feature similarity within the latent space.
+
+\begin{center}
+    \includegraphics[width=0.48\textwidth]{figures/64.png}
+    \includegraphics[width=0.48\textwidth]{figures/inter.png}
+\end{center}
+
+
+\section{Limitations}
+The proposed GAN network has certain limitations due to its relatively small number of parameters, which restricts its capacity to model complex data distributions. Although the model's loss converges quickly within approximately 10 epochs, this rapid convergence often leads to mode collapse or insufficient learning of the underlying data distribution, resulting in poor-quality generated images. Additionally, the limited network capacity may fail to capture fine-grained details and diverse features in the data, further degrading the quality of the generated outputs.
+
+\printbibliography
+\end{document}
